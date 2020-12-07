@@ -298,8 +298,6 @@
                 mapchip_reader.readAsDataURL(event.target.files[0]);
             })
 
-            edit_width = GetValueAsNumber('editwidth')
-            edit_height = GetValueAsNumber('editheight')
             edit_scale = GetValueAsNumber('edit_scale')
             mapchip_scale = GetValueAsNumber('mapchip_scale')
             mapchip_size = GetValueAsNumber('mapchip_size')
@@ -308,6 +306,9 @@
             document.getElementById('editheight').max = max_edit_height;
             document.getElementById('editwidth').value = default_edit_width.toString();
             document.getElementById('editheight').value = default_edit_height.toString();
+
+            edit_width = GetValueAsNumber('editwidth')
+            edit_height = GetValueAsNumber('editheight')
 
             for (let i = 0; i < max_edit_height; i++) {
                 maptiles[i] = new Array(max_edit_width);
