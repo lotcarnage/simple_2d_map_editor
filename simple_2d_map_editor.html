@@ -66,9 +66,11 @@
         var mapchip_w_count = 1;
         var mapchip_h_count = 1;
         var mapchip_scale = 1;
+        var is_mapchip_view_touched = false;
         var edit_scale = 1;
         var edit_width = 1;
         var edit_height = 1;
+        var is_edit_view_touched = false;
         var selected_mapchip_index = 0;
 
         const GetTilePoint = function(event, block_size) {
@@ -84,6 +86,7 @@
                 /* マップチップ書き込み */
                 [w, h] = GetTilePoint(event, scaled_mapchip_size);
                 maptiles[h][w] = selected_mapchip_index;
+                is_edit_view_touched = true;
             }
             if (event.button === 2) {
                 /* スポイト */
@@ -105,6 +108,7 @@
                 const scaled_mapchip_size = mapchip_size * edit_scale;
                 [w, h] = GetTilePoint(event, scaled_mapchip_size);
                 maptiles[h][w] = selected_mapchip_index;
+                is_edit_view_touched = true;
             };
         };
 
@@ -146,6 +150,8 @@
                 mapchip_w_count = Math.ceil(mapchip_picture_width / mapchip_size);
                 mapchip_h_count = Math.ceil(mapchip_picture_height / mapchip_size);
                 context.drawImage(image_instance, 0, 0);
+                is_mapchip_view_touched = true;
+                is_edit_view_touched = true;
             }
         };
 
@@ -172,32 +178,42 @@
             canvas_context.stroke();
         }
 
-        const UpdateView = function() {
+        const UpdateMapchipView = function() {
             const mapchip_bg_canvas = document.getElementById("mapchip_bg");
             const mapchip_canvas = document.getElementById("mapchip");
             const mapchip_context = mapchip_canvas.getContext("2d");
-            const edit_canvas = document.getElementById("edit");
-            const edit_context = edit_canvas.getContext("2d");
-            const chip_canvas = document.getElementById("chip");
-            const chip_context = chip_canvas.getContext("2d");
-
             mapchip_canvas.width = mapchip_bg_canvas.width * mapchip_scale;
             mapchip_canvas.height = mapchip_bg_canvas.height * mapchip_scale;
-            mapchip_context.imageSmoothingEnabled = false
+            mapchip_context.imageSmoothingEnabled = false;
             mapchip_context.scale(mapchip_scale, mapchip_scale);
             mapchip_context.drawImage(mapchip_bg_canvas, 0, 0);
+            if (document.getElementById('view_grid').checked) {
+                const grid_color = document.getElementById('grid_color').value;
+                DrawGrid(mapchip_context, mapchip_w_count, mapchip_h_count, mapchip_scale, mapchip_size, grid_color);
+            }
+            is_mapchip_view_touched = false;
+        }
 
+        const UpdateSelectedChipView = function() {
+            const mapchip_bg_canvas = document.getElementById("mapchip_bg");
+            const chip_canvas = document.getElementById("chip");
+            const chip_context = chip_canvas.getContext("2d");
             chip_canvas.width = mapchip_size * edit_scale;
             chip_canvas.height = mapchip_size * edit_scale;
-            chip_context.imageSmoothingEnabled = false
+            chip_context.imageSmoothingEnabled = false;
             chip_context.scale(edit_scale, edit_scale);
             const src_x = Math.floor(selected_mapchip_index % mapchip_w_count) * mapchip_size;
             const src_y = Math.floor(selected_mapchip_index / mapchip_w_count) * mapchip_size;
             chip_context.drawImage(mapchip_bg_canvas, src_x, src_y, mapchip_size, mapchip_size, 0, 0, mapchip_size, mapchip_size);
+        }
 
+        const UpdateEditView = function() {
+            const mapchip_bg_canvas = document.getElementById("mapchip_bg");
+            const edit_canvas = document.getElementById("edit");
+            const edit_context = edit_canvas.getContext("2d");
             edit_canvas.width = edit_width * mapchip_size * edit_scale;
             edit_canvas.height = edit_height * mapchip_size * edit_scale;
-            edit_context.imageSmoothingEnabled = false
+            edit_context.imageSmoothingEnabled = false;
             edit_context.scale(edit_scale, edit_scale);
             for (var h = 0; h < edit_height; h++) {
                 for (var w = 0; w < edit_width; w++) {
@@ -212,11 +228,21 @@
                         dst_x, dst_y, mapchip_size, mapchip_size);
                 }
             }
-
             if (document.getElementById('view_grid').checked) {
                 const grid_color = document.getElementById('grid_color').value;
                 DrawGrid(edit_context, edit_width, edit_height, edit_scale, mapchip_size, grid_color);
-                DrawGrid(mapchip_context, mapchip_w_count, mapchip_h_count, mapchip_scale, mapchip_size, grid_color);
+            }
+            is_edit_view_touched = false;
+        }
+
+        const UpdateView = function() {
+            const mapchip_bg_canvas = document.getElementById("mapchip_bg");
+            if (is_mapchip_view_touched) {
+                UpdateMapchipView();
+            }
+            UpdateSelectedChipView();
+            if (is_edit_view_touched) {
+                UpdateEditView();
             }
 
             const bg_color = document.getElementById('canvas_bg_color').value;
@@ -270,26 +296,33 @@
                 LoadEditData(event.target.result);
                 const basename = ExtractBaseName(document.getElementById('edit_filepath').value);
                 document.getElementById('edit_data_name').value = basename;
+                is_edit_view_touched = true;
             });
             mapchip_reader.addEventListener('load', (event) => {
                 LoadImage("mapchip_bg", event.target.result);
             });
             AddListener('editwidth', 'change', (event) => {
                 edit_width = event.target.valueAsNumber
+                is_edit_view_touched = true;
             });
             AddListener('editheight', 'change', (event) => {
                 edit_height = event.target.valueAsNumber
+                is_edit_view_touched = true;
             });
             AddListener('mapchip_scale', 'change', (event) => {
                 mapchip_scale = Number(event.target.value);
+                is_mapchip_view_touched = true;
             });
             AddListener('edit_scale', 'change', (event) => {
                 edit_scale = Number(event.target.value);
+                is_edit_view_touched = true;
             });
             AddListener('mapchip_size', 'change', (event) => {
                 mapchip_size = Number(event.target.value);
                 mapchip_w_count = Math.ceil(mapchip_picture_width / mapchip_size);
                 mapchip_h_count = Math.ceil(mapchip_picture_height / mapchip_size);
+                is_edit_view_touched = true;
+                is_mapchip_view_touched = true;
             });
             AddListener('edit_filepath', 'change', (event) => {
                 edit_reader.readAsBinaryString(event.target.files[0]);
@@ -297,6 +330,10 @@
             AddListener('mapchip_filepath', 'change', (event) => {
                 mapchip_reader.readAsDataURL(event.target.files[0]);
             })
+            AddListener('view_grid', 'change', (event) => {
+                is_mapchip_view_touched = true;
+                is_edit_view_touched = true;
+            });
 
             edit_scale = GetValueAsNumber('edit_scale')
             mapchip_scale = GetValueAsNumber('mapchip_scale')
@@ -314,6 +351,8 @@
                 maptiles[i] = new Array(max_edit_width);
                 maptiles[i].fill(0);
             }
+            is_mapchip_view_touched = true;
+            is_edit_view_touched = true;
             window.requestAnimationFrame(UpdateView);
         };
 
@@ -406,7 +445,7 @@
         <p>選択中マップチップ</p>
         <p><canvas id="chip" width="16" height="16"></canvas></p>
     </div>
-    
+
     <div id="mapchipsblock">
         <p>
             マップチップ表示倍率
