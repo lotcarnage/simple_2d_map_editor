@@ -59,8 +59,8 @@
         const max_edit_height = 256;
         const default_edit_width = 16;
         const default_edit_height = 12;
-        const maptiles = new Array(max_edit_height);
         const data = {
+            _maptiles: JSON.parse(JSON.stringify((new Array(max_edit_height)).fill((new Array(max_edit_width)).fill(0)))),
             _mapchip_picture_width: 16,
             _mapchip_picture_height: 16,
             _mapchip_size: 16,
@@ -153,6 +153,31 @@
             },
             TouchEditView: function() {
                 this.DependedView(true, false);
+            },
+            WriteMap: function(w, h, mapchip_index) {
+                this._maptiles[h][w] = mapchip_index;
+                this.DependedView(true, false);
+            },
+            GetWrittenChipIndex: function(w, h) {
+                return this._maptiles[h][w];
+            },
+            GetMapchipSourcePoint: function(mapchip_index) {
+                const left = Math.floor(mapchip_index % this._mapchip_w_count) * this._mapchip_size;
+                const top = Math.floor(mapchip_index / this._mapchip_w_count) * this._mapchip_size;
+                return [left, top];
+            },
+            MakeRawSaveData: function() {
+                const edit_w_count = this._edit_width;
+                const edit_h_count = this._edit_height;
+                const save_tiles = new Array(edit_h_count);
+                for (var h = 0; h < edit_h_count; h++) {
+                    save_tiles[h] = this._maptiles[h].slice(0, edit_w_count);
+                }
+                return {
+                    width: edit_w_count,
+                    height: edit_h_count,
+                    tiles: save_tiles
+                };
             }
         }
 
@@ -168,13 +193,12 @@
             if (event.button === 0) {
                 /* マップチップ書き込み */
                 [w, h] = GetTilePoint(event, scaled_mapchip_size);
-                maptiles[h][w] = data.selected_mapchip_index;
-                data.TouchEditView();
+                data.WriteMap(w, h, data.selected_mapchip_index);
             }
             if (event.button === 2) {
                 /* スポイト */
                 [w, h] = GetTilePoint(event, scaled_mapchip_size);
-                data.selected_mapchip_index = maptiles[h][w];
+                data.selected_mapchip_index = data.GetWrittenChipIndex(w, h);
             }
         };
 
@@ -190,8 +214,7 @@
             if (event.buttons === 1 || event.witch === 1) {
                 const scaled_mapchip_size = data.mapchip_size * data.edit_scale;
                 [w, h] = GetTilePoint(event, scaled_mapchip_size);
-                maptiles[h][w] = data.selected_mapchip_index;
-                data.TouchEditView();
+                data.WriteMap(w, h, data.selected_mapchip_index);
             };
         };
 
@@ -203,10 +226,10 @@
             data.edit_width = read_data.width;
             data.edit_height = read_data.height;
             const edit_w_count = data.edit_width;
-            const edit_h_count = data.edit_height;            
+            const edit_h_count = data.edit_height;
             for (var h = 0; h < edit_h_count; h++) {
                 for (var w = 0; w < edit_w_count; w++) {
-                    maptiles[h][w] = read_data.tiles[h][w];
+                    data.WriteMap(w, h, read_data.tiles[h][w]);
                 }
             }
             return true;
@@ -287,7 +310,7 @@
             chip_canvas.height = mapchip_size * view_scale;
             chip_context.imageSmoothingEnabled = false;
             chip_context.scale(view_scale, view_scale);
-            [src_x, src_y] = GetChipTopLeftPoint(mapchip_index, mapchip_w_count, mapchip_size);
+            [src_x, src_y] = data.GetMapchipSourcePoint(mapchip_index);
             chip_context.drawImage(mapchip_bg_canvas, src_x, src_y, mapchip_size, mapchip_size, 0, 0, mapchip_size, mapchip_size);
         }
 
@@ -303,8 +326,8 @@
                 for (var w = 0; w < edit_w_count; w++) {
                     const dst_x = w * mapchip_size;
                     const dst_y = h * mapchip_size;
-                    const mi = maptiles[h][w];
-                    [src_x, src_y] = GetChipTopLeftPoint(mi, data.mapchip_w_count, mapchip_size);
+                    const mi = data.GetWrittenChipIndex(w, h);
+                    [src_x, src_y] = data.GetMapchipSourcePoint(mi);
                     edit_context.drawImage(
                         mapchip_bg_canvas,
                         src_x, src_y, mapchip_size, mapchip_size,
@@ -423,25 +446,11 @@
             data.edit_height = GetValueAsNumber('editheight')
             data.edit_scale = GetValueAsNumber('edit_scale')
 
-            for (let i = 0; i < max_edit_height; i++) {
-                maptiles[i] = new Array(max_edit_width);
-                maptiles[i].fill(0);
-            }
             window.requestAnimationFrame(UpdateView);
         };
 
         const MakeSaveDataBlobAsJson = function() {
-            const edit_w_count = data.edit_width;
-            const edit_h_count = data.edit_height;
-            const save_tiles = new Array(edit_h_count);
-            for (var h = 0; h < edit_h_count; h++) {
-                save_tiles[h] = maptiles[h].slice(0, edit_w_count);
-            }
-            const save_data = {
-                width: edit_w_count,
-                height: edit_h_count,
-                tiles: save_tiles
-            }
+            const save_data = data.MakeRawSaveData();
             const save_data_json = JSON.stringify(save_data);
             const save_data_blob = new Blob([save_data_json], {
                 type: 'application/json'
