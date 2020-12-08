@@ -60,18 +60,101 @@
         const default_edit_width = 16;
         const default_edit_height = 12;
         const maptiles = new Array(max_edit_height);
-        var mapchip_picture_width = 16;
-        var mapchip_picture_height = 16;
-        var mapchip_size = 16;
-        var mapchip_w_count = 1;
-        var mapchip_h_count = 1;
-        var mapchip_scale = 1;
-        var is_mapchip_view_touched = false;
-        var edit_scale = 1;
-        var edit_width = 1;
-        var edit_height = 1;
-        var is_edit_view_touched = false;
-        var selected_mapchip_index = 0;
+        const data = {
+            _mapchip_picture_width: 16,
+            _mapchip_picture_height: 16,
+            _mapchip_size: 16,
+            _mapchip_scale: 1,
+            _is_mapchip_view_touched: false,
+            _edit_scale: 1,
+            _edit_width: 1,
+            _edit_height: 1,
+            _is_edit_view_touched: false,
+            _selected_mapchip_index: 0,
+            DependedView: function(edit_view, mapchip_view) {
+                this._is_edit_view_touched |= edit_view;
+                this._is_mapchip_view_touched |= mapchip_view;
+            },
+            get mapchip_w_count() {
+                return Math.ceil(this._mapchip_picture_width / this._mapchip_size);
+            },
+            get mapchip_h_count() {
+                return Math.ceil(this.mapchip_picture_height / this.mapchip_size);
+            },
+            get mapchip_scale() {
+                return this._mapchip_scale;
+            },
+            set mapchip_scale(new_scale) {
+                this._mapchip_scale = new_scale;
+                this.DependedView(false, true);
+            },
+            get mapchip_picture_width() {
+                return this._mapchip_picture_width;
+            },
+            set mapchip_picture_width(new_width) {
+                this._mapchip_picture_width = new_width;
+                this.DependedView(true, true);
+            },
+            get mapchip_picture_height() {
+                return this._mapchip_picture_height;
+            },
+            set mapchip_picture_height(new_height) {
+                this._mapchip_picture_height = new_height;
+                this.DependedView(false, true);
+            },
+            get mapchip_size() {
+                return this._mapchip_size;
+            },
+            set mapchip_size(new_size) {
+                this._mapchip_size = new_size;
+                this.DependedView(true, true);
+            },
+            get is_mapchip_view_touched() {
+                return this._is_mapchip_view_touched;
+            },
+            ClearMapchipViewTouchedFlag: function() {
+                this.DependedView(false, true);
+            },
+            get edit_scale() {
+                return this._edit_scale;
+            },
+            set edit_scale(new_scale) {
+                this._edit_scale = new_scale;
+                this.DependedView(true, false);
+            },
+            get edit_width() {
+                return this._edit_width;
+            },
+            set edit_width(new_width) {
+                this._edit_width = new_width;
+                this.DependedView(true, false);
+            },
+            get edit_height() {
+                return this._edit_height;
+            },
+            set edit_height(new_height) {
+                this._edit_height = new_height;
+                this.DependedView(true, false);
+            },
+            get is_edit_view_touched() {
+                return this._is_edit_view_touched;
+            },
+            ClearEditViewTouchedFlag: function() {
+                this._is_edit_view_touched = false;
+            },
+            get selected_mapchip_index() {
+                return this._selected_mapchip_index;
+            },
+            set selected_mapchip_index(new_index) {
+                this._selected_mapchip_index = new_index;
+            },
+            TouchView: function() {
+                this.DependedView(true, true);
+            },
+            TouchEditView: function() {
+                this.DependedView(true, false);
+            }
+        }
 
         const GetTilePoint = function(event, block_size) {
             const rect = event.target.getBoundingClientRect();
@@ -81,34 +164,34 @@
         };
 
         const MouseDownCallback = function(event) {
-            const scaled_mapchip_size = mapchip_size * edit_scale;
+            const scaled_mapchip_size = data.mapchip_size * data.edit_scale;
             if (event.button === 0) {
                 /* マップチップ書き込み */
                 [w, h] = GetTilePoint(event, scaled_mapchip_size);
-                maptiles[h][w] = selected_mapchip_index;
-                is_edit_view_touched = true;
+                maptiles[h][w] = data.selected_mapchip_index;
+                data.TouchEditView();
             }
             if (event.button === 2) {
                 /* スポイト */
                 [w, h] = GetTilePoint(event, scaled_mapchip_size);
-                selected_mapchip_index = maptiles[h][w];
+                data.selected_mapchip_index = maptiles[h][w];
             }
         };
 
         const Mapchip_MouseDownCallback = function(event) {
-            const scaled_mapchip_size = mapchip_size * mapchip_scale;
+            const scaled_mapchip_size = data.mapchip_size * data.mapchip_scale;
             if (event.button === 0) {
                 [w, h] = GetTilePoint(event, scaled_mapchip_size)
-                selected_mapchip_index = w + h * mapchip_w_count;
+                data.selected_mapchip_index = w + h * data.mapchip_w_count;
             }
         };
 
         const MouseMoveCallback = function(event) {
             if (event.buttons === 1 || event.witch === 1) {
-                const scaled_mapchip_size = mapchip_size * edit_scale;
+                const scaled_mapchip_size = data.mapchip_size * data.edit_scale;
                 [w, h] = GetTilePoint(event, scaled_mapchip_size);
-                maptiles[h][w] = selected_mapchip_index;
-                is_edit_view_touched = true;
+                maptiles[h][w] = data.selected_mapchip_index;
+                data.TouchEditView();
             };
         };
 
@@ -143,15 +226,11 @@
             var image_instance = new Image();
             image_instance.src = image_path;
             image_instance.onload = function() {
-                mapchip_picture_width = image_instance.width;
-                mapchip_picture_height = image_instance.height;
-                canvas.width = mapchip_picture_width;
-                canvas.height = mapchip_picture_height;
-                mapchip_w_count = Math.ceil(mapchip_picture_width / mapchip_size);
-                mapchip_h_count = Math.ceil(mapchip_picture_height / mapchip_size);
+                data.mapchip_picture_width = image_instance.width;
+                data.mapchip_picture_height = image_instance.height;
+                canvas.width = data.mapchip_picture_width;
+                canvas.height = data.mapchip_picture_height;
                 context.drawImage(image_instance, 0, 0);
-                is_mapchip_view_touched = true;
-                is_edit_view_touched = true;
             }
         };
 
@@ -178,50 +257,52 @@
             canvas_context.stroke();
         }
 
-        const UpdateMapchipView = function() {
+        const UpdateMapchipView = function(mapchip_w_count, mapchip_h_count, mapchip_size, view_scale) {
             const mapchip_bg_canvas = document.getElementById("mapchip_bg");
             const mapchip_canvas = document.getElementById("mapchip");
             const mapchip_context = mapchip_canvas.getContext("2d");
-            mapchip_canvas.width = mapchip_bg_canvas.width * mapchip_scale;
-            mapchip_canvas.height = mapchip_bg_canvas.height * mapchip_scale;
+            mapchip_canvas.width = mapchip_bg_canvas.width * view_scale;
+            mapchip_canvas.height = mapchip_bg_canvas.height * view_scale;
             mapchip_context.imageSmoothingEnabled = false;
-            mapchip_context.scale(mapchip_scale, mapchip_scale);
+            mapchip_context.scale(view_scale, view_scale);
             mapchip_context.drawImage(mapchip_bg_canvas, 0, 0);
             if (document.getElementById('view_grid').checked) {
                 const grid_color = document.getElementById('grid_color').value;
-                DrawGrid(mapchip_context, mapchip_w_count, mapchip_h_count, mapchip_scale, mapchip_size, grid_color);
+                DrawGrid(mapchip_context, mapchip_w_count, mapchip_h_count, view_scale, mapchip_size, grid_color);
             }
-            is_mapchip_view_touched = false;
         }
 
-        const UpdateSelectedChipView = function() {
+        const GetChipTopLeftPoint = function(mapchip_index, mapchip_w_count, mapchip_size) {
+            const left = Math.floor(mapchip_index % mapchip_w_count) * mapchip_size;
+            const top = Math.floor(mapchip_index / mapchip_w_count) * mapchip_size;
+            return [left, top];
+        }
+        const UpdateSelectedChipView = function(mapchip_index, mapchip_w_count, mapchip_size, view_scale) {
             const mapchip_bg_canvas = document.getElementById("mapchip_bg");
             const chip_canvas = document.getElementById("chip");
             const chip_context = chip_canvas.getContext("2d");
-            chip_canvas.width = mapchip_size * edit_scale;
-            chip_canvas.height = mapchip_size * edit_scale;
+            chip_canvas.width = mapchip_size * view_scale;
+            chip_canvas.height = mapchip_size * view_scale;
             chip_context.imageSmoothingEnabled = false;
-            chip_context.scale(edit_scale, edit_scale);
-            const src_x = Math.floor(selected_mapchip_index % mapchip_w_count) * mapchip_size;
-            const src_y = Math.floor(selected_mapchip_index / mapchip_w_count) * mapchip_size;
+            chip_context.scale(view_scale, view_scale);
+            [src_x, src_y] = GetChipTopLeftPoint(mapchip_index, mapchip_w_count, mapchip_size);
             chip_context.drawImage(mapchip_bg_canvas, src_x, src_y, mapchip_size, mapchip_size, 0, 0, mapchip_size, mapchip_size);
         }
 
-        const UpdateEditView = function() {
+        const UpdateEditView = function(edit_w_count, edit_h_count, mapchip_size, view_scale) {
             const mapchip_bg_canvas = document.getElementById("mapchip_bg");
             const edit_canvas = document.getElementById("edit");
             const edit_context = edit_canvas.getContext("2d");
-            edit_canvas.width = edit_width * mapchip_size * edit_scale;
-            edit_canvas.height = edit_height * mapchip_size * edit_scale;
+            edit_canvas.width = edit_w_count * mapchip_size * view_scale;
+            edit_canvas.height = edit_h_count * mapchip_size * view_scale;
             edit_context.imageSmoothingEnabled = false;
-            edit_context.scale(edit_scale, edit_scale);
-            for (var h = 0; h < edit_height; h++) {
-                for (var w = 0; w < edit_width; w++) {
+            edit_context.scale(view_scale, view_scale);
+            for (var h = 0; h < edit_h_count; h++) {
+                for (var w = 0; w < edit_w_count; w++) {
                     const dst_x = w * mapchip_size;
                     const dst_y = h * mapchip_size;
                     const mi = maptiles[h][w];
-                    const src_x = Math.floor(mi % mapchip_w_count) * mapchip_size;
-                    const src_y = Math.floor(mi / mapchip_w_count) * mapchip_size;
+                    [src_x, src_y] = GetChipTopLeftPoint(mi, data.mapchip_w_count, mapchip_size);
                     edit_context.drawImage(
                         mapchip_bg_canvas,
                         src_x, src_y, mapchip_size, mapchip_size,
@@ -230,19 +311,20 @@
             }
             if (document.getElementById('view_grid').checked) {
                 const grid_color = document.getElementById('grid_color').value;
-                DrawGrid(edit_context, edit_width, edit_height, edit_scale, mapchip_size, grid_color);
+                DrawGrid(edit_context, edit_w_count, edit_h_count, view_scale, mapchip_size, grid_color);
             }
-            is_edit_view_touched = false;
         }
 
         const UpdateView = function() {
             const mapchip_bg_canvas = document.getElementById("mapchip_bg");
-            if (is_mapchip_view_touched) {
-                UpdateMapchipView();
+            if (data.is_mapchip_view_touched) {
+                UpdateMapchipView(data.mapchip_w_count, data.mapchip_h_count, data.mapchip_size, data.mapchip_scale);
+                data.ClearMapchipViewTouchedFlag();
             }
-            UpdateSelectedChipView();
-            if (is_edit_view_touched) {
-                UpdateEditView();
+            UpdateSelectedChipView(data.selected_mapchip_index, data.mapchip_w_count, data.mapchip_size, data.edit_scale);
+            if (data.is_edit_view_touched) {
+                UpdateEditView(data.edit_width, data.edit_height, data.mapchip_size, data.edit_scale);
+                data.ClearEditViewTouchedFlag();
             }
 
             const bg_color = document.getElementById('canvas_bg_color').value;
@@ -296,33 +378,25 @@
                 LoadEditData(event.target.result);
                 const basename = ExtractBaseName(document.getElementById('edit_filepath').value);
                 document.getElementById('edit_data_name').value = basename;
-                is_edit_view_touched = true;
+                data.TouchEditView();
             });
             mapchip_reader.addEventListener('load', (event) => {
                 LoadImage("mapchip_bg", event.target.result);
             });
             AddListener('editwidth', 'change', (event) => {
-                edit_width = event.target.valueAsNumber
-                is_edit_view_touched = true;
+                data.edit_width = event.target.valueAsNumber
             });
             AddListener('editheight', 'change', (event) => {
-                edit_height = event.target.valueAsNumber
-                is_edit_view_touched = true;
+                data.edit_height = event.target.valueAsNumber
             });
             AddListener('mapchip_scale', 'change', (event) => {
-                mapchip_scale = Number(event.target.value);
-                is_mapchip_view_touched = true;
+                data.mapchip_scale = Number(event.target.value);
             });
             AddListener('edit_scale', 'change', (event) => {
-                edit_scale = Number(event.target.value);
-                is_edit_view_touched = true;
+                data.edit_scale = Number(event.target.value);
             });
             AddListener('mapchip_size', 'change', (event) => {
-                mapchip_size = Number(event.target.value);
-                mapchip_w_count = Math.ceil(mapchip_picture_width / mapchip_size);
-                mapchip_h_count = Math.ceil(mapchip_picture_height / mapchip_size);
-                is_edit_view_touched = true;
-                is_mapchip_view_touched = true;
+                data.mapchip_size = Number(event.target.value);
             });
             AddListener('edit_filepath', 'change', (event) => {
                 edit_reader.readAsBinaryString(event.target.files[0]);
@@ -331,28 +405,26 @@
                 mapchip_reader.readAsDataURL(event.target.files[0]);
             })
             AddListener('view_grid', 'change', (event) => {
-                is_mapchip_view_touched = true;
-                is_edit_view_touched = true;
+                data.TouchView()
             });
 
             edit_scale = GetValueAsNumber('edit_scale')
-            mapchip_scale = GetValueAsNumber('mapchip_scale')
-            mapchip_size = GetValueAsNumber('mapchip_size')
+            data.mapchip_scale = GetValueAsNumber('mapchip_scale')
+            data.mapchip_size = GetValueAsNumber('mapchip_size')
 
             document.getElementById('editwidth').max = max_edit_width;
             document.getElementById('editheight').max = max_edit_height;
             document.getElementById('editwidth').value = default_edit_width.toString();
             document.getElementById('editheight').value = default_edit_height.toString();
 
-            edit_width = GetValueAsNumber('editwidth')
-            edit_height = GetValueAsNumber('editheight')
+            data.edit_width = GetValueAsNumber('editwidth')
+            data.edit_height = GetValueAsNumber('editheight')
+            data.edit_scale = GetValueAsNumber('edit_scale')
 
             for (let i = 0; i < max_edit_height; i++) {
                 maptiles[i] = new Array(max_edit_width);
                 maptiles[i].fill(0);
             }
-            is_mapchip_view_touched = true;
-            is_edit_view_touched = true;
             window.requestAnimationFrame(UpdateView);
         };
 
