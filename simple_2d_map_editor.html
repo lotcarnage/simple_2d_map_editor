@@ -200,10 +200,12 @@
         }
         const TryReadEditDataByJson = function(bytes) {
             const read_data = JSON.parse(bytes);
-            edit_width = read_data.width;
-            edit_height = read_data.height;
-            for (var h = 0; h < edit_height; h++) {
-                for (var w = 0; w < edit_width; w++) {
+            data.edit_width = read_data.width;
+            data.edit_height = read_data.height;
+            const edit_w_count = data.edit_width;
+            const edit_h_count = data.edit_height;            
+            for (var h = 0; h < edit_h_count; h++) {
+                for (var w = 0; w < edit_w_count; w++) {
                     maptiles[h][w] = read_data.tiles[h][w];
                 }
             }
@@ -429,13 +431,15 @@
         };
 
         const MakeSaveDataBlobAsJson = function() {
-            const save_tiles = new Array(edit_height);
-            for (var h = 0; h < edit_height; h++) {
-                save_tiles[h] = maptiles[h].slice(0, edit_width);
+            const edit_w_count = data.edit_width;
+            const edit_h_count = data.edit_height;
+            const save_tiles = new Array(edit_h_count);
+            for (var h = 0; h < edit_h_count; h++) {
+                save_tiles[h] = maptiles[h].slice(0, edit_w_count);
             }
             const save_data = {
-                width: edit_width,
-                height: edit_height,
+                width: edit_w_count,
+                height: edit_h_count,
                 tiles: save_tiles
             }
             const save_data_json = JSON.stringify(save_data);
