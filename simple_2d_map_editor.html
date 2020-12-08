@@ -162,8 +162,8 @@
                 return this._maptiles[h][w];
             },
             GetMapchipSourcePoint: function(mapchip_index) {
-                const left = Math.floor(mapchip_index % this._mapchip_w_count) * this._mapchip_size;
-                const top = Math.floor(mapchip_index / this._mapchip_w_count) * this._mapchip_size;
+                const left = Math.floor(mapchip_index % this.mapchip_w_count) * this._mapchip_size;
+                const top = Math.floor(mapchip_index / this.mapchip_w_count) * this._mapchip_size;
                 return [left, top];
             },
             MakeRawSaveData: function() {
