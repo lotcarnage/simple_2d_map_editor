@@ -284,17 +284,25 @@
         }
 
         const DrawMapchipIndex = function(edit_context, edit_w_count, edit_h_count, mapchip_size, view_scale, color) {
+            const font_size = 8;
+            edit_context.save();
             edit_context.textAlign = "center";
             edit_context.textBaseline = "middle";
+            edit_context.font = `${font_size}px gothic`;
             edit_context.fillStyle = color;
+            edit_context.scale(1/view_scale, 1/view_scale);
+            const view_mapchip_size = mapchip_size * view_scale;
+            const y_offset = font_size / 2;
             for (var h = 0; h < edit_h_count; h++) {
                 for (var w = 0; w < edit_w_count; w++) {
-                    const dst_x = w * mapchip_size;
-                    const dst_y = h * mapchip_size;
+                    const dst_x = w * view_mapchip_size;
+                    const dst_y = h * view_mapchip_size;
                     const mi = data.GetWrittenChipIndex(w, h);
-                    edit_context.fillText(mi, dst_x + mapchip_size / 2, dst_y + mapchip_size / 2);
+                    const x_offset = mapchip_size * view_scale - String(mi).length * (font_size / 2 - 1) - 1;
+                    edit_context.fillText(mi, dst_x + x_offset, dst_y + y_offset);
                 }
             }
+            edit_context.restore();
         }
 
         const UpdateMapchipView = function(mapchip_w_count, mapchip_h_count, mapchip_size, view_scale) {
