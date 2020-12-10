@@ -56,12 +56,14 @@
     </style>
 
     <script>
+        const view_font_size = 8;
         const max_edit_width = 256;
         const max_edit_height = 256;
         const default_edit_width = 16;
         const default_edit_height = 12;
         const data = {
             _maptiles: JSON.parse(JSON.stringify((new Array(max_edit_height)).fill((new Array(max_edit_width)).fill(0)))),
+            _maptiles_written_set: new Set(),
             _mapchip_picture_width: 16,
             _mapchip_picture_height: 16,
             _mapchip_size: 16,
@@ -142,6 +144,7 @@
             },
             ClearEditViewTouchedFlag: function() {
                 this._is_edit_view_touched = false;
+                this._maptiles_written_set.clear();
             },
             get selected_mapchip_index() {
                 return this._selected_mapchip_index;
@@ -157,7 +160,11 @@
             },
             WriteMap: function(w, h, mapchip_index) {
                 this._maptiles[h][w] = mapchip_index;
-                this.DependedView(true, false);
+                this.DependedView(false, false);
+                this._maptiles_written_set.add([w, h]);
+            },
+            GetWrittenMapTileSet: function() {
+                return this._maptiles_written_set;
             },
             GetWrittenChipIndex: function(w, h) {
                 return this._maptiles[h][w];
@@ -265,17 +272,17 @@
             canvas_context.lineTo(end_x, end_y);
         }
 
-        const DrawGrid = function(canvas_context, width_count, height_count, scale, grid_size, grid_color) {
+        const PartiallyDrawGrid = function(canvas_context, w_grid_set, h_grid_set, width_count, height_count, scale, grid_size, grid_color) {
             canvas_context.beginPath();
             const line_height = height_count * grid_size;
             const line_width = width_count * grid_size;
             const adjust_e = -(1 / scale) / 2;
-            for (var w = 1; w < width_count + 1; w++) {
-                const x = w * grid_size + adjust_e;
+            for (let w of w_grid_set) {
+                const x = (w + 1) * grid_size + adjust_e;
                 DrawLine(canvas_context, x, -0.5, x, line_height + 0.5);
             }
-            for (var h = 1; h < height_count + 1; h++) {
-                const y = h * grid_size + adjust_e;
+            for (let h of h_grid_set) {
+                const y = (h + 1) * grid_size + adjust_e;
                 DrawLine(canvas_context, -0.5, y, line_width + 0.5, y);
             }
             canvas_context.lineWidth = 1 / scale;
@@ -283,8 +290,41 @@
             canvas_context.stroke();
         }
 
+        const DrawGrid = function(canvas_context, width_count, height_count, scale, grid_size, grid_color) {
+            const all_w_grid_set = new Set();
+            const all_h_grid_set = new Set();
+            for (var w = 0; w < width_count; w++) {
+                all_w_grid_set.add(w);
+            }
+            for (var h = 0; h < height_count; h++) {
+                all_h_grid_set.add(h);
+            }
+            PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width_count, height_count, scale, grid_size, grid_color);
+        }
+
+        const PartiallyDrawMapchipIndex = function(edit_context, target_maptile_set, mapchip_size, view_scale, color) {
+            const font_size = view_font_size;
+            edit_context.save();
+            edit_context.textAlign = "center";
+            edit_context.textBaseline = "middle";
+            edit_context.font = `${font_size}px gothic`;
+            edit_context.fillStyle = color;
+            edit_context.scale(1 / view_scale, 1 / view_scale);
+            const view_mapchip_size = mapchip_size * view_scale;
+            const y_offset = font_size / 2;
+            for (let maptile of target_maptile_set) {
+                [w, h] = maptile;
+                const dst_x = w * view_mapchip_size;
+                const dst_y = h * view_mapchip_size;
+                const mi = data.GetWrittenChipIndex(w, h);
+                const x_offset = mapchip_size * view_scale - String(mi).length * (font_size / 2 - 1) - 1;
+                edit_context.fillText(mi, dst_x + x_offset, dst_y + y_offset);
+            }
+            edit_context.restore();
+        }
+
         const DrawMapchipIndex = function(edit_context, edit_w_count, edit_h_count, mapchip_size, view_scale, color) {
-            const font_size = 8;
+            const font_size = view_font_size;
             edit_context.save();
             edit_context.textAlign = "center";
             edit_context.textBaseline = "middle";
@@ -346,6 +386,38 @@
             }
         }
 
+        const UpdateEditViewUpdateTiles = function(edit_w_count, edit_h_count, mapchip_size, view_scale) {
+            const mapchip_bg_canvas = document.getElementById("mapchip_bg");
+            const edit_canvas = document.getElementById("edit");
+            const edit_context = edit_canvas.getContext("2d");
+            const written_maptile_set = data.GetWrittenMapTileSet();
+            edit_context.scale(1, 1);
+            edit_context.imageSmoothingEnabled = false;
+            const update_w_grid_set = new Set();
+            const update_h_grid_set = new Set();
+            for (let maptile of written_maptile_set) {
+                [w, h] = maptile;
+                update_w_grid_set.add(w);
+                update_h_grid_set.add(h);
+                const dst_x = w * mapchip_size;
+                const dst_y = h * mapchip_size;
+                const mi = data.GetWrittenChipIndex(w, h);
+                [src_x, src_y] = data.GetMapchipSourcePoint(mi);
+                edit_context.drawImage(
+                    mapchip_bg_canvas,
+                    src_x, src_y, mapchip_size, mapchip_size,
+                    dst_x, dst_y, mapchip_size, mapchip_size);
+            }
+            const grid_color = document.getElementById('grid_color').value;
+            if (document.getElementById('view_grid').checked) {
+                PartiallyDrawGrid(edit_context, update_w_grid_set, update_h_grid_set, edit_w_count, edit_h_count, view_scale, mapchip_size, grid_color);
+            }
+            if (document.getElementById('view_index').checked) {
+                PartiallyDrawMapchipIndex(edit_context, written_maptile_set, mapchip_size, view_scale, grid_color);
+            }
+            written_maptile_set.clear();
+        }
+
         const UpdateEditView = function(edit_w_count, edit_h_count, mapchip_size, view_scale) {
             const mapchip_bg_canvas = document.getElementById("mapchip_bg");
             const edit_canvas = document.getElementById("edit");
@@ -385,6 +457,8 @@
             if (data.is_edit_view_touched) {
                 UpdateEditView(data.edit_width, data.edit_height, data.mapchip_size, data.edit_scale);
                 data.ClearEditViewTouchedFlag();
+            } else {
+                UpdateEditViewUpdateTiles(data.edit_width, data.edit_height, data.mapchip_size, data.edit_scale);
             }
 
             const bg_color = document.getElementById('canvas_bg_color').value;
