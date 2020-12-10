@@ -311,7 +311,7 @@
             edit_context.fillStyle = color;
             edit_context.scale(1 / view_scale, 1 / view_scale);
             const view_mapchip_size = mapchip_size * view_scale;
-            const y_offset = font_size / 2;
+            const y_offset = font_size / 2 + 2;
             for (let maptile of target_maptile_set) {
                 [w, h] = maptile;
                 const dst_x = w * view_mapchip_size;
